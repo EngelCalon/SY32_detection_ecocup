@@ -24,7 +24,7 @@ SY32_detection_ecopcup/
 
 ├── README.md                 # You are here 📌
 
-├── README.md                 # Normes pour la contribution (PR, commits messages...)
+├── contributing.md                 # Normes pour la contribution (PR, commits messages...)
 
 └── requirements.txt          # Fichier contenant les bibliothèques nécessaires
 
