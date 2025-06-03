@@ -1,0 +1,6 @@
+pandas==2.2.1           # Manipulation de données tabulaires
+numpy==1.26.4           # Calculs numériques
+scikit-learn==1.4.2     # Analyse et modèles statistiques
+python-dotenv==1.0.1    # Gestion de fichiers .env
+scikit-image==0.25.2    # Manipulation des images
+matplotlib==3.10.1      # Visualisation
