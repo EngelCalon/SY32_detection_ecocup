@@ -53,8 +53,19 @@ SY32_detection_ecopcup/
 
 1. **Cloner le dépôt**
 ```bash
-git clone https://github.com/EngelCalon/SY32_detection_ecocup.git
+git clone --recurse-submodules https://github.com/EngelCalon/SY32_detection_ecocup.git
 cd SY32_detection_ecocup
+```
+ou s'il est déjà cloné, il faut récupérer les données d'entrainement:
+
+```bash
+git submodule update --init --recursive
+```
+
+Commande utilisée pour cloner le jeu d'entrainement dans le repo (ne pas refaire):
+
+```bash
+git submodule add https://github.com/user/data-repo.git data
 ```
 
 2. **Installer les bibliothèques**
@@ -62,6 +73,12 @@ cd SY32_detection_ecocup
 pip install -r requirements.txt
 ```
 ---
+
+3. Pull les changements du jeu d'entrainement
+
+```bash
+git submodule update
+```
 
 ## 👥 Collaboration
 
