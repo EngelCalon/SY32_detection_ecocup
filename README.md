@@ -45,6 +45,7 @@ SY32_detection_ecopcup/
 - **Scikit Image**: manipulation des images
 - **Scikit learn** : machine learning pour l’analyse statistique
 - **Git / GitHub** : gestion de version et collaboration
+- **Matplotlib** : Affichage
 
 ---
 
