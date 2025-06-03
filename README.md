@@ -72,13 +72,14 @@ git submodule add https://github.com/user/data-repo.git data
 ```bash
 pip install -r requirements.txt
 ```
----
 
 3. Pull les changements du jeu d'entrainement
 
 ```bash
 git submodule update
 ```
+
+---
 
 ## 👥 Collaboration
 
