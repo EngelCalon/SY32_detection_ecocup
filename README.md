@@ -97,7 +97,7 @@ git submodule update
 
 - Engel CALON (*@EngelCalon*)
 
-- Adrien Duqué (*@tbengric*)
+- Adrien Duqué (*@riuza-c-137*)
 
 ---
 
