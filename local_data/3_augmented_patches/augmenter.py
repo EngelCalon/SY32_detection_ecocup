@@ -10,12 +10,12 @@ import shutil
 import albumentations as A
 
 TEST = False # booléen. Si True, il n'y a qu'un patch qui est traité, pour voir le résultat de la génération de l'augmentation. Si False, tous les patchs sont traités
-# TODO : peut-être rajouter des paramètres en fonction de ce qu'on veut enable ou pas comme transformation
 
-def augmenter(patchs_base: dict): # TODO se servir d'albumentations, en encodant les noms des patchs avec les transformations appliquées
+def augmenter(patchs_base: dict):
 
     # Note : Finalement, pas besoin de faire des rotations à 90°, les patchs seront réorientés avant normalisation
 
+    # Ce qui a été retenu comme augmentations utiles (il faut aussi réfléchir à l'explosion du nombre de données qui deviennent longues à traiter)
     transforms = {
     "original": A.Compose([]),  # identité
     "horizontal": A.Compose([A.HorizontalFlip(p=1.0)]),
@@ -26,8 +26,6 @@ def augmenter(patchs_base: dict): # TODO se servir d'albumentations, en encodant
     ]),
 }
     
-    # TODO : continuer de compléter ce dictionnaire de transformations (pas forcément à la main)
-
     augmented_patchs = {}
 
     for patch_name, patch in patchs_base.items():

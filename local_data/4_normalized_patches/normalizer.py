@@ -3,6 +3,7 @@ import os
 import shutil
 import matplotlib.pyplot as plt
 from skimage.transform import resize
+from skimage.color import rgb2gray
 
 TARGET_SCALE = 128 # Paramètre d'échelle des patchs normalisés arbitraire
 
@@ -29,6 +30,7 @@ def normalize_patch(patch, target_shape):
     """
     patch: nd.array (height, width, 3) (3 car RGB)
     """
+    patch = rgb2gray(patch)
     height = patch.shape[0]
     width = patch.shape[1]
     if width > height:
@@ -148,11 +150,11 @@ def save(pos_patchs: dict, neg_patchs: dict):
 
     for patch_name, patch in pos_patchs.items():
         save_file = os.path.join("local_data", "4_normalized_patches", "pos", f"{patch_name}.jpg")
-        plt.imsave(save_file, patch)
+        plt.imsave(save_file, patch, cmap="gray")
 
     for patch_name, patch in neg_patchs.items():
         save_file = os.path.join("local_data", "4_normalized_patches", "neg", f"{patch_name}.jpg")
-        plt.imsave(save_file, patch)
+        plt.imsave(save_file, patch, cmap="gray")
 
     print(f"len pos_patchs : {len(pos_patchs)}")
     print(f"len neg_patchs : {len(neg_patchs)}")
