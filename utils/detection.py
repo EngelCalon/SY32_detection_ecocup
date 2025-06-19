@@ -1,6 +1,15 @@
 from skimage.util import img_as_float
 from skimage.transform import resize
+from skimage.color import rgb2gray
 import numpy as np
+
+import importlib
+from functools import partial
+
+module_name = "local_data.4_normalized_patches.normalizer"
+normalizer = importlib.import_module(module_name)
+target_shape = normalizer.get_target_shape()
+normalize_patch = partial(normalizer.normalize_patch, target_shape)
 
 
 def sliding_window(img, h, w, x_step, y_step):
@@ -40,6 +49,13 @@ def get_iou(window1, window2):
     upper_left_1, lower_right_1 = window1
     upper_left_2, lower_right_2 = window2
 
+    window1_area = (lower_right_1[0] - upper_left_1[0]) * (
+        lower_right_1[1] - upper_left_1[1]
+    )
+    window2_area = (lower_right_2[0] - upper_left_2[0]) * (
+        lower_right_2[1] - upper_left_2[1]
+    )
+
     upper_left_inter = (
         max(upper_left_1[0], upper_left_2[0]),
         max(upper_left_1[1], upper_left_2[1]),
@@ -49,23 +65,11 @@ def get_iou(window1, window2):
         min(lower_right_1[1], lower_right_2[1]),
     )
 
-    upper_left_union = (
-        min(upper_left_1[0], upper_left_2[0]),
-        min(upper_left_1[1], upper_left_2[1]),
-    )
-
-    lower_right_union = (
-        max(lower_right_1[0], lower_right_2[0]),
-        max(lower_right_1[1], lower_right_2[1]),
-    )
-
     inter_width = max(0, lower_right_inter[0] - upper_left_inter[0])
     inter_height = max(0, lower_right_inter[1] - upper_left_inter[1])
-    union_width = max(0, lower_right_union[0] - upper_left_union[0])
-    union_height = max(0, lower_right_union[1] - upper_left_union[1])
 
     inter_area = inter_height * inter_width
-    union_area = union_height * union_width
+    union_area = window1_area + window2_area - inter_area
 
     return inter_area / union_area if union_area > 0 else 0
 
@@ -157,7 +161,7 @@ from skimage.util import img_as_float
 import numpy as np
 
 
-def detect_ecocup(img, classifier, img_target_shape=(128, 72, 3)):
+def detect_ecocup(img, classifier, features_func):
     """
     Détecte les gobelets en plastique dans une image à l'aide d'un classifieur et d'une fenêtre glissante.
     :param img: Image sur laquelle appliquer la détection.
@@ -165,7 +169,8 @@ def detect_ecocup(img, classifier, img_target_shape=(128, 72, 3)):
     :param img_target_shape: Shape cible pour la classification.
     :return: Liste des coordonnées des gobelets détectés.
     """
-    sizes = range(20, 200, 20)
+
+    sizes = range(60, 200, 20)
     hw_list = [(s, s) for s in sizes]
     step_squares = [(s, s) for s in sizes]
 
@@ -180,21 +185,18 @@ def detect_ecocup(img, classifier, img_target_shape=(128, 72, 3)):
                 for idx, img_part in enumerate(img_parts)
                 if img_part is not None and img_part.size != 0
             ]
-            if img_parts_valid:
-                img_parts_resized = [
-                    img_as_float(
-                        resize(img_part, img_target_shape, anti_aliasing=True)
-                    ).reshape(-1)
-                    for img_part, _ in img_parts_valid
-                ]
-                X = np.stack(img_parts_resized)
-                preds = classifier.predict(X)
-                probas = classifier.predict_proba(X)[:, 1]  # proba classe "gobelet"
-                for (img_part, idx), pred, proba in zip(img_parts_valid, preds, probas):
-                    if pred == 1:
-                        # On stocke la fenêtre et son score
-                        all_windows.append(windows_coords[idx])
-                        all_scores.append(proba)
+            normalized_parts = [
+                normalize_patch(img_part) for img_part, _ in img_parts_valid
+            ]
+            features = [features_func(img_part) for img_part in normalized_parts]
+
+            preds = classifier.predict(features)
+            probas = classifier.predict_proba(features)[:, 1]  # proba classe "gobelet"
+            for (img_part, idx), pred, proba in zip(img_parts_valid, preds, probas):
+                if pred == 1:
+                    # On stocke la fenêtre et son score
+                    all_windows.append(windows_coords[idx])
+                    all_scores.append(proba)
 
     if not all_windows:
         return []
