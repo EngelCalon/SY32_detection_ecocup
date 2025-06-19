@@ -80,7 +80,7 @@ def load():
     max_scale = 0 # "max_height" donc
     min_scale = float("inf")
 
-    for patch in pos_patchs_base.values():
+    for name, patch in pos_patchs_base.items():
         height = patch.shape[0]
         width = patch.shape[1]
         if width > height:
@@ -89,9 +89,11 @@ def load():
         ratios.append(width/height)
 
         if height > max_scale:
+            print(f"Nouvelle max_scale : {height} en {name}.")
             max_scale = height
 
         if height < min_scale:
+            # print(f"Nouvelle min_scale : {height} en {name}.")
             min_scale = height
 
     ratios = np.array(ratios)
