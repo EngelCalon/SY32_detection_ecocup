@@ -3,6 +3,7 @@ from skimage.transform import resize
 from skimage.color import rgb2gray
 import numpy as np
 
+import time
 import importlib
 from functools import partial
 
@@ -44,7 +45,7 @@ def get_iou(window1, window2):
     :return float: Aire de recouvrement entre les deux fenetres.
     """
 
-    print("Calcul de l'IoU entre les fenetres : ", window1, window2)
+    # print("Calcul de l'IoU entre les fenetres : ", window1, window2)
 
     upper_left_1, lower_right_1 = window1
     upper_left_2, lower_right_2 = window2
@@ -161,7 +162,7 @@ from skimage.util import img_as_float
 import numpy as np
 
 
-def detect_ecocup(img, classifier, features_func):
+def detect_ecocup(img, classifier, features_func, min_ratio, max_ratio, min_scale, max_scale, px_step, scales_nb, ratios_nb, confidence_threshold):
     """
     Détecte les gobelets en plastique dans une image à l'aide d'un classifieur et d'une fenêtre glissante.
     :param img: Image sur laquelle appliquer la détection.
@@ -170,34 +171,62 @@ def detect_ecocup(img, classifier, features_func):
     :return: Liste des coordonnées des gobelets détectés.
     """
 
-    sizes = range(100, 200, 20)
-    hw_list = [(s, s) for s in sizes]
-    step_squares = [(s, s) for s in sizes]
+    start = time.time()
 
+    # Générations des limites de fenêtres à tester
+    ratios = np.linspace(min_ratio, max_ratio, ratios_nb)
+    scales = np.linspace(min_scale, max_scale, scales_nb)
+
+    # Croisement des couples
+    ratios, scales = np.meshgrid(ratios,scales, indexing="ij")
+
+    ratios = ratios.flatten()
+    heights = scales.flatten().astype("uint16")
+    widths = (ratios*heights).astype("uint16")
+    
     all_windows = []
     all_scores = []
 
-    for h, w in hw_list:
-        for x_step, y_step in step_squares:
-            img_parts, windows_coords = sliding_window(img, h, w, x_step, y_step)
-            img_parts_valid = [
-                (img_part, idx)
-                for idx, img_part in enumerate(img_parts)
-                if img_part is not None and img_part.size != 0
-            ]
-            normalized_parts = [
-                normalize_patch(img_part) for img_part, _ in img_parts_valid
-            ]
-            features = features_func(normalized_parts)
+    print(f"Temps setup : {time.time() - start}")
+    print(f"Nombre d'itérations : {scales_nb * ratios_nb}")
+    for i in range(scales_nb * ratios_nb):
+        print(f"\n\tItération {i+1} : ")
+        h = heights[i]
+        w = widths[i]
 
-            preds = classifier.predict(features)
-            probas = classifier.predict_proba(features)[:, 1]  # proba classe "gobelet"
-            for (img_part, idx), pred, proba in zip(img_parts_valid, preds, probas):
-                if pred == 1:
-                    # On stocke la fenêtre et son score
-                    all_windows.append(windows_coords[idx])
-                    all_scores.append(proba)
+        start = time.time()        
+        img_parts, windows_coords = sliding_window(img, h, w, px_step, px_step)
+        # Même chose avec le rectangle retourné
+        img_parts_2, windows_coords_2 = sliding_window(img, w, h, px_step, px_step)
 
+        img_parts = (img_parts + img_parts_2)
+        windows_coords = np.array(windows_coords + windows_coords_2)
+        print(f"\tTemps sliding_window x2 ({len(img_parts)} généré): {time.time() - start}")
+
+        if len(img_parts) == 0:
+            print(f"\tAbandon de l'itération")
+            continue
+
+        start = time.time()
+        normalized_parts = [
+            normalize_patch(img_part) for img_part in img_parts
+        ]
+        print(f"\tTemps de traitement pour {len(img_parts)} : {time.time() - start}")
+
+        start = time.time()
+        features = features_func(normalized_parts) # np.array
+        print(f"\tTemps d'extraction de features pour {len(img_parts)} : {time.time() - start}")
+
+        start = time.time()
+        # preds = classifier.predict(features) # pour moi inutile si on calcule déjà les probas ?
+        probas = classifier.predict_proba(features)[:, 1]  # proba classe "gobelet" # np.array
+        print(f"\tTemps de prédiction pour {len(img_parts)} : {time.time() - start}")
+
+        keep_idx = np.where(probas >= confidence_threshold)[0]
+        all_windows += list(windows_coords[keep_idx])
+        all_scores += list(probas[keep_idx])
+
+    print()
     if not all_windows:
         return []
 
@@ -205,9 +234,11 @@ def detect_ecocup(img, classifier, features_func):
     all_windows = np.array(all_windows)
     all_scores = np.array(all_scores)
 
+    start = time.time()
     best_windows = non_maxima_suppression_v2(
-        all_windows, all_scores, iou_decision_criteria=0.5, score_decision_criteria=0.5
-    )
+        all_windows, all_scores, iou_decision_criteria=0.5, score_decision_criteria=confidence_threshold
+    ) # TODO, je crois que le dernier paramètre sert à rien, on a déjà filtré les probas acceptables
+    print(f"Temps pour NMS : {time.time() - start}")
 
     # Extraire les coordonnées des meilleures fenêtres
     best_coords = [(window[0], window[1]) for window in best_windows]
