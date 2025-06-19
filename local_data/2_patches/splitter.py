@@ -26,21 +26,21 @@ def splitter():
 
     # Recherche des fichiers de labels
     f_labels = [
-        f
+        os.path.splitext(f)[0]
         for f in os.listdir(os.path.join("local_data", "1_data_filtered", "train", "labels_csv"))
         if f.endswith(".csv")
     ]
     print(f"f_labels: {f_labels[:5]} ... len:{len(f_labels)}\n")
 
-    img_pos_train = []
-    img_neg_train = []
-    bbox_train = []
+    img_pos_train = {}
+    img_neg_train = {}
+    bbox_train = {}
 
     # Extraction des données des labels et des images correspondantes
     for f in f_labels:
 
         # parsing grâce à np.loadtxt
-        bbox = np.loadtxt(os.path.join("local_data","1_data_filtered", "train", "labels_csv", f), delimiter=",")
+        bbox = np.loadtxt(os.path.join("local_data","1_data_filtered", "train", "labels_csv", f"{f}.csv"), delimiter=",")
         
         # Plusieurs cas possibles : 
         
@@ -56,25 +56,25 @@ def splitter():
         # Extraction de l'image correspondante
         try:
             img_pos = plt.imread(
-                os.path.join("local_data", "1_data_filtered", "train", "images", "pos", f.replace(".csv", ".jpg"))
+                os.path.join("local_data", "1_data_filtered", "train", "images", "pos", f"{f}.jpg")
             )
             
         except FileNotFoundError:
             continue
 
         # Enregistrement des appairages que si le tout est cohérent
-        img_pos_train.append(img_pos)
-        bbox_train.append(bbox)
+        img_pos_train[f"{f}"] = img_pos
+        bbox_train[f"{f}"] = bbox
 
 
     # Chargement des images négatives
-    neg_paths = [f for f in  os.listdir(os.path.join("local_data", "1_data_filtered", "train", "images", "neg")) if f.endswith(".jpg")]
+    neg_paths = [os.path.splitext(f)[0] for f in  os.listdir(os.path.join("local_data", "1_data_filtered", "train", "images", "neg")) if f.endswith(".jpg")]
     for f in neg_paths:
         try:
             img_neg = plt.imread(
-                os.path.join("local_data", "1_data_filtered", "train", "images", "neg", f)
+                os.path.join("local_data", "1_data_filtered", "train", "images", "neg", f"{f}.jpg")
             )
-            img_neg_train.append(img_neg)
+            img_neg_train[f"{f}"] = img_neg
 
         except FileNotFoundError:
             continue
@@ -86,9 +86,9 @@ def splitter():
 
     # Découpe des images positives, filtre et enregistrement
     nb_pos_patches = 0
-    for i in range(len(bbox_train)):
-        bbox_list = bbox_train[i]
-        img = img_pos_train[i]
+    for f_name in img_pos_train.keys():
+        bbox_list = bbox_train[f_name]
+        img = img_pos_train[f_name]
 
         for j, bbox in enumerate(bbox_list):
             upper_left_corner_Y = int(bbox[0])
@@ -99,7 +99,7 @@ def splitter():
 
             # Filtres sur les patchs positifs
             if height*width < MIN_PATCH_AREA:
-                print(f"i:{i}, j:{j}. Patch trop petit détecté")
+                print(f"pos/{f_name}.png -> bbox n°{j} : Patch trop petit détecté")
                 continue
             if is_difficult and not KEEP_DIFFICULT:
                 continue
@@ -114,7 +114,7 @@ def splitter():
                 upper_left_corner_X:lower_right_corner_X + 1,
             ]
 
-            save_file = os.path.join("local_data", "2_patches", "pos",f"{i:04d}_{j:04d}")
+            save_file = os.path.join("local_data", "2_patches", "pos",f"{f_name}_{j:02d}")
             save_file += "_d" if is_difficult else ""
             save_file += ".jpg"
             plt.imsave(save_file, img_cut)
@@ -122,12 +122,15 @@ def splitter():
     print()
     print(f"Nombre de patchs positifs conservés : {nb_pos_patches}")
 
+    neg_f_names = list(img_neg_train.keys())
+    all_bboxs = list(bbox_train.values())
     # Découpe de patchs négatifs (uniquement sur les images complètement négatives) et enregistrement
     nb_neg_patches = 0
     while nb_neg_patches < nb_pos_patches * NB_NEG_FACTOR:
 
-        img = random.choice(img_neg_train)
-        random_bbox = random.choice(random.choice(bbox_train))
+        f_name = random.choice(neg_f_names)
+        img = img_neg_train[f_name]
+        random_bbox = random.choice(random.choice(all_bboxs))
 
         upper_left_corner_Y = int(random_bbox[0])
         upper_left_corner_X = int(random_bbox[1])
@@ -150,7 +153,7 @@ def splitter():
             upper_left_corner_X:lower_right_corner_X + 1,
         ]
 
-        save_file = os.path.join("local_data", "2_patches", "neg",f"{nb_neg_patches:05d}.jpg")
+        save_file = os.path.join("local_data", "2_patches", "neg",f"{f_name}_{nb_neg_patches:05d}.jpg")
         try:
             plt.imsave(save_file, img_cut)
         except ValueError:
