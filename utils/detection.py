@@ -170,7 +170,7 @@ def detect_ecocup(img, classifier, features_func):
     :return: Liste des coordonnées des gobelets détectés.
     """
 
-    sizes = range(60, 200, 20)
+    sizes = range(100, 200, 20)
     hw_list = [(s, s) for s in sizes]
     step_squares = [(s, s) for s in sizes]
 
@@ -188,7 +188,7 @@ def detect_ecocup(img, classifier, features_func):
             normalized_parts = [
                 normalize_patch(img_part) for img_part, _ in img_parts_valid
             ]
-            features = [features_func(img_part) for img_part in normalized_parts]
+            features = features_func(normalized_parts)
 
             preds = classifier.predict(features)
             probas = classifier.predict_proba(features)[:, 1]  # proba classe "gobelet"
@@ -210,6 +210,6 @@ def detect_ecocup(img, classifier, features_func):
     )
 
     # Extraire les coordonnées des meilleures fenêtres
-    best_coords = [((win[0], win[1]), (win[2], win[3])) for win in best_windows]
+    best_coords = [(window[0], window[1]) for window in best_windows]
 
     return best_coords
