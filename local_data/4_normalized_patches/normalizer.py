@@ -11,7 +11,7 @@ def normalizer(patchs_base: dict):
     target_shape = get_target_shape()
     patchs_normalized = {}
     for patch_name, patch in patchs_base.items():
-        patchs_normalized[patch_name] = normalize_patch(patch, target_shape)
+        patchs_normalized[patch_name] = normalize_patch(target_shape, patch)
     return patchs_normalized
 
 
@@ -26,11 +26,12 @@ def get_target_shape():
     return shape_tuple
 
 # Fonction qui peut être aussi appelée par l'algorithme de détection itératif (après avoir découpé une fenêtre)
-def normalize_patch(patch, target_shape):
+def normalize_patch(target_shape, patch):
     """
     patch: nd.array (height, width, 3) (3 car RGB)
     """
-    patch = rgb2gray(patch)
+    if patch.ndim == 3:
+        patch = rgb2gray(patch)
     height = patch.shape[0]
     width = patch.shape[1]
     if width > height:
