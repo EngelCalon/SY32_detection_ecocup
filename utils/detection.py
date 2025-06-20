@@ -172,6 +172,7 @@ def detect_ecocup(img, classifier, features_func, min_ratio, max_ratio, min_scal
     """
 
     start = time.time()
+    global_start = start
 
     # Générations des limites de fenêtres à tester
     ratios = np.linspace(min_ratio, max_ratio, ratios_nb)
@@ -190,9 +191,9 @@ def detect_ecocup(img, classifier, features_func, min_ratio, max_ratio, min_scal
     print(f"Temps setup : {time.time() - start}")
     print(f"Nombre d'itérations : {scales_nb * ratios_nb}")
     for i in range(scales_nb * ratios_nb):
-        print(f"\n\tItération {i+1} : ")
         h = heights[i]
         w = widths[i]
+        print(f"\n\tItération {i+1} : h={h:04d} | w={w:04d}")
 
         start = time.time()        
         img_parts, windows_coords = sliding_window(img, h, w, px_step, px_step)
@@ -225,6 +226,10 @@ def detect_ecocup(img, classifier, features_func, min_ratio, max_ratio, min_scal
         keep_idx = np.where(probas >= confidence_threshold)[0]
         all_windows += list(windows_coords[keep_idx])
         all_scores += list(probas[keep_idx])
+        print(f"\tFenêtres gardées : {len(keep_idx)} sur {len(img_parts)} (p>={confidence_threshold})")
+        if len(probas) > 0:
+            print(f"\tMeilleur score de l'itération : {np.max(probas)} pour {windows_coords[np.argmax(probas)]}")
+        print(f"\tTemps cumulé : {time.time() - global_start}")
 
     print()
     if not all_windows:
@@ -234,13 +239,6 @@ def detect_ecocup(img, classifier, features_func, min_ratio, max_ratio, min_scal
     all_windows = np.array(all_windows)
     all_scores = np.array(all_scores)
 
-    start = time.time()
-    best_windows = non_maxima_suppression_v2(
-        all_windows, all_scores, iou_decision_criteria=0.5, score_decision_criteria=confidence_threshold
-    ) # TODO, je crois que le dernier paramètre sert à rien, on a déjà filtré les probas acceptables
-    print(f"Temps pour NMS : {time.time() - start}")
+    print(f"Temps total de détection : {time.time() - global_start}")
 
-    # Extraire les coordonnées des meilleures fenêtres
-    best_coords = [(window[0], window[1]) for window in best_windows]
-
-    return best_coords
+    return all_windows, all_scores
