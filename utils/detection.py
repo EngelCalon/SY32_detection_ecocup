@@ -119,12 +119,13 @@ def get_iou(window1, window2):
 
 
 def non_maxima_suppression_v2(
-    windows_list, scores, iou_decision_criteria=0.5, score_decision_criteria=0.5
+    windows_list, scores, iou_decision_criteria=0.5, score_decision_criteria=0.5, output_score=False
 ):
     """
     Cet algorithme permet de supprimer les fenetres qui se recouvrent trop, en gardant la fenetre avec le score le plus haut.
     """
     best_windows = []
+    best_scores = []
 
     # Filtrer les fenetres par rapprort au seuil de score
     valid_indices = np.where(scores >= score_decision_criteria)[0]
@@ -139,6 +140,7 @@ def non_maxima_suppression_v2(
     while len(windows_list) > 0:
         best_window = windows_list[0]
         best_windows.append(best_window)
+        best_scores.append(scores[0])
 
         # Supprimer la meilleure fenetre de la liste
         windows_list = windows_list[1:]
@@ -149,7 +151,10 @@ def non_maxima_suppression_v2(
         valid_indices = np.where(iou_scores < iou_decision_criteria)[0]
         windows_list = windows_list[valid_indices]
         scores = scores[valid_indices]
-
+    
+    if output_score:
+        return best_windows, best_scores
+    
     return best_windows
 
 
