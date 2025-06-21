@@ -233,7 +233,7 @@ def detect_ecocup(img, classifier, features_func, min_ratio, max_ratio, min_scal
 
     print()
     if not all_windows:
-        return []
+        return np.array([]), np.array([])
 
     # Conversion en array pour NMS
     all_windows = np.array(all_windows)
